@@ -1,25 +1,27 @@
 #include "common.h"
 
-struct hook_data_event_t {
+struct syscall_data_event_t {
     u32 pid;
     u32 tid;
     u64 timestamp_ns;
     char comm[TASK_COMM_LEN];
+    long NR;
+    // unsigned long args[6];
 };
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-} stack_events SEC(".maps");
+} syscall_events SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __type(key, u32);
-    __type(value, struct hook_data_event_t);
+    __type(value, struct syscall_data_event_t);
     __uint(max_entries, 1);
-} data_buffer_heap SEC(".maps");
+} sys_buffer_heap SEC(".maps");
 
-SEC("uprobe/stack")
-int probe_stack(struct pt_regs* ctx) {
+SEC("tracepoint/raw_syscalls/sys_enter")
+int raw_syscalls_sys_enter(struct sys_enter_args* ctx) {
     u64 current_pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = current_pid_tgid >> 32;
     u32 tid = current_pid_tgid & 0xffffffff;
@@ -29,17 +31,17 @@ int probe_stack(struct pt_regs* ctx) {
     if (0xaabbccaa != uid) {
         return 0;
     }
-    // 为什么要这么写 因为全局常量是5.3还是哪个版本才可以 只好用这个笨办法了
-    // 我们知道 ((tid >> 16) + pid) 肯定是刚好等于 pid 本身的
-    // 那么过滤 pid 的时候改成 0 
-    // 则 pid 必 大于 0
-    // 那么修改后面的数字为真正要过滤的 pid 值 如此可以实现过滤
+
     if (((tid >> 16) + pid) > 0xaabbcc11 && 0xaabbcc99 != pid) {
         return 0;
     }
 
+    if (0xaabbcc77 != ctx->id) {
+        return 0;
+    }
+
     u32 zero = 0;
-    struct hook_data_event_t* event = bpf_map_lookup_elem(&data_buffer_heap, &zero);
+    struct syscall_data_event_t* event = bpf_map_lookup_elem(&sys_buffer_heap, &zero);
     if (event == NULL) {
         return 0;
     }
@@ -49,8 +51,15 @@ int probe_stack(struct pt_regs* ctx) {
     event->timestamp_ns = bpf_ktime_get_ns();
 
     bpf_get_current_comm(&event->comm, sizeof(event->comm));
+    event->NR = ctx->id;
+    // event->args[0] = ctx->args[0];
+    // event->args[1] = ctx->args[1];
+    // event->args[2] = ctx->args[2];
+    // event->args[3] = ctx->args[3];
+    // event->args[4] = ctx->args[4];
+    // event->args[5] = ctx->args[5];
 
-    long status = bpf_perf_event_output(ctx, &stack_events, BPF_F_CURRENT_CPU, event, sizeof(struct hook_data_event_t));
+    long status = bpf_perf_event_output(ctx, &syscall_events, BPF_F_CURRENT_CPU, event, sizeof(struct syscall_data_event_t));
 
     return 0;
 }

@@ -1,5 +1,5 @@
-#ifndef EDEMO_COMMON_H
-#define EDEMO_COMMON_H
+#ifndef STACKPLZ_COMMON_H
+#define STACKPLZ_COMMON_H
 
 #include <linux/bpf.h>
 #include <linux/ptrace.h>
@@ -38,6 +38,13 @@ typedef __u64 u64;
 #define __uint(name, val) int (*name)[val]
 #define __type(name, val) typeof(val) *name
 #define __array(name, val) typeof(val) *name[]
+
+struct sys_enter_args
+{
+    unsigned long long ignore;
+    long id;
+    unsigned long args[6];
+};
 
 struct pt_regs {
     union {
