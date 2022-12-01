@@ -45,7 +45,7 @@ chmod +x /data/local/tmp/stackplz
 追踪系统调用时的堆栈，以及寄存器信息，支持按pid过滤
 
 ```bash
-./stackplz --name com.lemon.lv --pid 11267 syscall --nr 63 --regs --unwindstack
+./stackplz --name com.lemon.lv --pid 11267 syscall --nr 63 --regs --stack
 ```
 
 ![](./images/Snipaste_2022-11-14_22-33-28.png)
@@ -53,7 +53,7 @@ chmod +x /data/local/tmp/stackplz
 通过**指定uid**，对`/apex/com.android.runtime/lib64/bionic/libc.so`的`open`函数进行hook
 
 ```bash
-./stackplz --uid 10245 stack --symbol open --unwindstack --regs
+./stackplz --uid 10245 stack --symbol open --stack --regs
 ```
 
 ![](./images/Snipaste_2022-11-13_14-10-18.png)
@@ -61,10 +61,18 @@ chmod +x /data/local/tmp/stackplz
 通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号进行hook
 
 ```bash
-./stackplz --name com.sfx.ebpf stack --library libnative-lib.so --symbol _Z5func1v --unwindstack --regs
+./stackplz --name com.sfx.ebpf stack --library libnative-lib.so --symbol _Z5func1v --stack --regs
 ```
 
 ![](./images/Snipaste_2022-11-13_14-11-03.png)
+
+通过`--reg`指定寄存器，对跳转目标地址进行偏移计算，再也不担心找不到跳哪儿去了
+
+`--reg`选项需要搭配`--regs`或者`--stack`使用，后续进行优化
+
+```bash
+./stackplz --name com.xingin.xhs stack --library libtiny.so --offset 0x175248 --regs --reg x8
+```
 
 通过**指定包名和配置文件**进行批量hook
 
@@ -87,13 +95,13 @@ chmod +x /data/local/tmp/stackplz
             "disable": false,
             "configs": [
                 {
-                    "unwindstack": true,
+                    "stack": true,
                     "regs": true,
                     "symbols": ["open"],
                     "offsets": []
                 },
                 {
-                    "unwindstack": false,
+                    "stack": false,
                     "regs": true,
                     "symbols": ["read", "send", "recv"],
                     "offsets": []
@@ -105,7 +113,7 @@ chmod +x /data/local/tmp/stackplz
             "disable": false,
             "configs": [
                 {
-                    "unwindstack": true,
+                    "stack": true,
                     "regs": true,
                     "symbols": ["_Z5func1v"],
                     "offsets": ["0xF37C"]
@@ -121,7 +129,7 @@ chmod +x /data/local/tmp/stackplz
 - `library_dirs` 目标库的搜索路径，可以设置多个
 - `libs` 目标多个库的hook配置
     - `library` 库名、完整库路径或者与搜索路径拼接后存在的路径
-    - `disable` 是否启用hook
+    - `disable` 表示是否禁用hook
     - `configs` 目标库的多个hook点配置，按输出需要进行配置
         - 即输出堆栈与输出寄存器信息的组合，每一种组合都可以设定多个符号和多个偏移
 
@@ -212,11 +220,6 @@ source ~/.bashrc
 adb push bin/stackplz /data/local/tmp
 ```
 
-# TODO
-
-- 从0到1文章
-- 优化代码逻辑...
-
 # Q & A
 
 1. 使用时手机卡住并重启怎么办？
@@ -269,8 +272,23 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 # 交流
 
-安卓逆向、eBPF技术、反调对抗、搞机...欢迎加入讨论
+有关eBPF on Android系列可以加群交流，加群途径：从star列表找到你熟悉的id请他们进行邀请
 
-![](./images/Snipaste_2022-11-09_17-26-46.png)
+个人碎碎念太多，有关stackplz文章就不同步到本项目了，请移步博客查看：
 
-后续将就本项目从0到1的过程分享系列文章，欢迎关注
+- [eBPF on Android之stackplz从0到1](https://blog.seeflower.dev/archives/176/)
+- [eBPF on Android之stackplz从0到1（补充）手机为何重启](https://blog.seeflower.dev/archives/177/)
+
+针对syscall追踪并获取参数单独开了一个项目，整体结构更简单，没有interface，有兴趣请移步[estrace](https://github.com/SeeFlowerX/estrace)
+
+# NEXT
+
+后续功能开发：
+
+- 更合理的获取maps的方案，缓存机制，有变化时再获取
+- 提供选项区分hook类型，而不是拆成两个子命令，简化代码
+- 为高版本内核提供读取数据内存并输出hex、字符串参数等功能
+- 批量hook使用新的配置文件，更细化控制
+- 为特定syscall的参数提供过滤功能，当然这是高版本内核才有的
+
+性价比真机推荐Redmi Note 11T Pro（理由：价格亲民、内核开源、内核版本5.10.66、可解锁或[临时root](https://github.com/tiann/DirtyPipeRoot)）：
