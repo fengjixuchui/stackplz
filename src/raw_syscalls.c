@@ -24,6 +24,8 @@ struct filter_t {
     u32 uid;
     u32 pid;
     u32 nr;
+    u32 tid_blacklist_mask;
+    u32 tid_blacklist[MAX_TID_BLACKLIST_COUNT];
 };
 
 struct {
@@ -54,16 +56,21 @@ int raw_syscalls_sys_enter(struct sys_enter_args* ctx) {
         return 0;
     }
 
-    // if (0xaabbccaa != uid) {
-    //     return 0;
-    // }
-
-    // if (((tid >> 16) + pid) > 0xaabbcc11 && 0xaabbcc99 != pid) {
-    //     return 0;
-    // }
-
     if (filter->nr != ctx->id) {
         return 0;
+    }
+
+    #pragma unroll
+    for (int i = 0; i < MAX_TID_BLACKLIST_COUNT; i++) {
+        if ((filter->tid_blacklist_mask & (1 << i))) {
+            if (filter->tid_blacklist[i] == tid) {
+                // 在tid黑名单直接跳过
+                return 0;
+            }
+        } else {
+            // 避免不必要的循环
+            break;
+        }
     }
 
     u32 zero = 0;

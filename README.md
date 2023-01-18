@@ -272,7 +272,9 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 # 交流
 
-有关eBPF on Android系列可以加群交流，加群途径：从star列表找到你熟悉的id请他们进行邀请
+有关eBPF on Android系列可以加群交流
+
+![](./images/IMG_20221218_135510.png)
 
 个人碎碎念太多，有关stackplz文章就不同步到本项目了，请移步博客查看：
 
@@ -290,5 +292,6 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 - 为高版本内核提供读取数据内存并输出hex、字符串参数等功能
 - 批量hook使用新的配置文件，更细化控制
 - 为特定syscall的参数提供过滤功能，当然这是高版本内核才有的
+- pid、tid等选项的黑名单+白名单过滤支持
 
 性价比真机推荐Redmi Note 11T Pro（理由：价格亲民、内核开源、内核版本5.10.66、可解锁或[临时root](https://github.com/tiann/DirtyPipeRoot)）：
